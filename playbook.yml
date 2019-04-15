@@ -1,0 +1,7 @@
+-name: install and start ftp server 
+  host: Machine1
+  remote_user: root
+  become: true 
+
+  roles: 
+    - ftp

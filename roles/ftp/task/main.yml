@@ -1,0 +1,63 @@
+- name: Install FTP package on Ubuntu
+  apt:
+    name: vsftpd
+    state: present
+  when: ansible_distribution == "Ubuntu"
+
+
+- name: Install HTTP package on Ubuntu
+  apt:
+    name: apache2
+    state: present
+  when: ansible_distribution == "Ubuntu"
+
+- block:
+- name: Start firewall Service
+  service: name=firewalld state=started enabled=yes
+  when: ansible_distribution == "Ubuntu"
+
+- name: Start WEB Service
+  service: name=httpd state=started enabled=yes
+  when: ansible_distribution == "Ubuntu"
+
+- name: Start FTP Service
+  service: name=vsftpd state=started enabled=yes
+  when: ansible_distribution == "Ubuntu"
+
+# Allow Web and FTP services on RHEL Firewall
+- block:
+- name: Allow Web service in Firewall
+  firewalld: service=http permanent=true state=enabled immediate=true
+  when: ansible_distribution == "Ubuntu"
+
+- name: Allow FTP service in Firewall
+  firewalld: port=21/tcp permanent=true state=enabled immediate=true
+  when: ansible_distribution == "Ubuntu"
+  
+# Modify FTP server configuration to allow Anonymous access.
+- block:
+- name: Create home dir for anonymous user if it does not exists
+file:
+  path: /var/ftp/pub
+  state: directory
+  mode: 0755
+
+- name: Modify FTP configuation
+lineinfile:
+  dest: /etc/vsftpd/vsftpd.conf
+  backup: yes
+  backrefs: yes
+  state: present
+  regexp: "{{ item.regexp }}"
+  line: "{{ item.line }}"
+with_items:
+  - { regexp: anonymous_enable=NO, line: anonymous_enable=YES }
+  - { regexp: anon_upload_enable, line: anon_upload_enable=YES }
+  - { regexp: anon_mkdir_write_enable, line: anon_mkdir_write_enable=YES }
+when: ansible_distribution == "RedHat"
+
+# Reload FTP service to apply above chanegs.
+- block:
+- name: Start FTP service
+service: name=vsftpd state=restarted enabled=yes
+when: ansible_distribution == "RedHat"
